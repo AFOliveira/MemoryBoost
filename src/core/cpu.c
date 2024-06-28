@@ -94,7 +94,6 @@ void cpu_idle(void)
     {
         cpu_arch_interrupt_finish();
     }
-
     cpu_arch_idle();
 
     /**
@@ -110,7 +109,6 @@ void cpu_standby()
     {
         cpu_arch_interrupt_finish();
     }
-
     cpu_arch_standby();
 
     /**
