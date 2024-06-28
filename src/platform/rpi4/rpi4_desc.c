@@ -46,4 +46,5 @@ struct platform platform = {
             .events_irq_offset = 48
         }
     }
+    
 };
