@@ -11,6 +11,7 @@
 spinlock_t lock;
 
 void mem_throt_period_timer_callback(irqid_t int_id) {
+    size_t time = timer_get();
     timer_disable();
     events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
     timer_reschedule_interrupt(cpu()->vcpu->vm->mem_throt.period_counts);
@@ -27,10 +28,11 @@ void mem_throt_period_timer_callback(irqid_t int_id) {
         cpu()->vcpu->vm->mem_throt.budget_left = cpu()->vcpu->vm->mem_throt.budget;
     
     timer_enable();
+    console_printk ("Timer callback took %d\n", timer_get() - time);
 
 }
 void mem_throt_event_overflow_callback(irqid_t int_id) {
-
+    size_t time = timer_get();
     events_clear_cntr_ovs(cpu()->vcpu->vm->mem_throt.counter_id);
     events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
     events_cntr_irq_disable(cpu()->vcpu->vm->mem_throt.counter_id);
@@ -48,6 +50,7 @@ void mem_throt_event_overflow_callback(irqid_t int_id) {
         cpu()->vcpu->mem_throt.throttled = true;  
         cpu_standby();
     }
+    console_printk ("Overflow callback took %d\n", timer_get() - time);
 }
 
 

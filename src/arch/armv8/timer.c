@@ -78,3 +78,16 @@ uint64_t timer_arch_reschedule_interrupt_us(uint64_t period) {
 
     return count_value;
 }
+
+size_t timer_arch_get() {
+    uint64_t count_value;
+    // Read the virtual counter
+    asm volatile("mrs %0, CNTVCT_EL0" : "=r" (count_value));
+    
+    // Calculate time in milliseconds with floating-point precision
+    return count_value;
+}
+
+uint64_t timer_arch_get_frequency() {
+    return timer_arch_get_system_frequency();
+}
