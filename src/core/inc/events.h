@@ -80,4 +80,80 @@ static inline void events_cntr_set_irq_callback(irq_handler_t handler, size_t co
     events_arch_cntr_set_irq_callback(handler, counter);
 }
 
+static inline size_t events_ddrc_cntr_alloc(void)
+{
+    return ddrc_cntr_alloc();
+}
+
+static inline void events_ddrc_cntr_free(size_t counter)
+{
+    ddrc_cntr_free(counter);
+}
+
+static inline void events_ddrc_enable(void)
+{
+    ddrc_enable();
+}
+
+static inline void events_ddrc_disable(void)
+{
+    ddrc_disable();
+}
+
+static inline int events_ddrc_cntr_enable(size_t counter)
+{
+    return ddrc_cntr_enable(counter);
+}
+
+static inline void events_ddrc_cntr_disable(size_t counter)
+{
+    ddrc_cntr_disable(counter);
+}
+
+static inline void events_ddrc_cntr_set(size_t counter, uint64_t value)
+{
+    ddrc_cntr_set(counter, value);
+}
+
+static inline uint64_t events_ddrc_get_cntr_value(size_t counter)
+{
+    return ddrc_cntr_get(counter);
+}
+
+static inline void events_ddrc_set_evtyper(size_t counter, size_t event)
+{
+    ddrc_set_evtyper(counter, event);
+}
+
+static inline void events_ddrc_interrupt_enable(uint64_t cpu_id)
+{
+    ddrc_interrupt_enable(cpu_id);
+}
+
+static inline void events_ddrc_interrupt_disable(uint64_t cpu_id)
+{
+    ddrc_interrupt_disable(cpu_id);
+}
+
+static inline void events_ddrc_cntr_irq_enable(size_t counter)
+{
+    ddrc_cntr_irq_enable(counter);
+}
+
+static inline void events_ddrc_cntr_irq_disable(size_t counter)
+{
+    ddrc_cntr_irq_disable(counter);
+}
+
+static inline void events_ddrc_clear_cntr_ovs(size_t counter)
+{
+    ddrc_clear_cntr_ovs(counter);
+}
+
+static inline void events_ddrc_cntr_set_irq_callback(irq_handler_t handler, size_t counter)
+{
+    ddrc_define_event_cntr_irq_callback(handler, counter);
+}
+
+
 #endif /* __EVENTS_H__ */
