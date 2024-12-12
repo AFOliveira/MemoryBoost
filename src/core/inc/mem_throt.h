@@ -10,6 +10,9 @@
 #include <events.h>
 #include <bitmap.h>
 
+// Define input ranges here so they are visible to everyone including this header
+#define INPUTA_RANGE 4
+#define INPUTB_RANGE 4
 
 typedef struct mem_throt_info {
 	bool is_initialized;
@@ -21,6 +24,9 @@ typedef struct mem_throt_info {
 	int64_t budget_left;
 	size_t assign_ratio;
 }mem_throt_t;
+
+
+extern const uint16_t LUT[40][40];
 
 extern size_t global_num_ticket_hypervisor;
 
