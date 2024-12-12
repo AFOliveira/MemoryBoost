@@ -64,6 +64,8 @@ void mem_throt_period_timer_callback(irqid_t int_id) {
     timer_disable();
     events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
     timer_reschedule_interrupt(cpu()->vcpu->vm->mem_throt.period_counts);
+    console_printk ("CPU %d BUS CYCLES %d \n", cpu()->id,  events_arch_get_cntr_value (cpu()->vcpu->vm->mem_throt.counter_id));
+
     events_cntr_set(cpu()->vcpu->vm->mem_throt.counter_id, cpu()->vcpu->mem_throt.budget);
 
     if (cpu()->vcpu->mem_throt.throttled) {
@@ -76,9 +78,8 @@ void mem_throt_period_timer_callback(irqid_t int_id) {
         cpu()->vcpu->vm->mem_throt.budget_left = cpu()->vcpu->vm->mem_throt.budget;
     }
 
-    // Perform the LUT lookup directly without a macro
     uint16_t iA = (uint16_t)cpu()->id;
-    uint16_t iB = (uint16_t)(int_id); // ensure INPUTB_RANGE defined before use
+    uint16_t iB = (uint16_t)(int_id);
 
     res1 = LUT[iA][iB];
 
@@ -97,10 +98,9 @@ void mem_throt_event_overflow_callback(irqid_t int_id) {
     cpu()->vcpu->vm->mem_throt.budget_left -= (cpu()->vcpu->vm->mem_throt.budget / cpu()->vcpu->vm->cpu_num);
     spin_unlock(&lock);
 
-    {
-        cpu()->vcpu->mem_throt.throttled = true;
-        cpu_standby();
-    }
+    cpu()->vcpu->mem_throt.throttled = true;
+    cpu_standby();
+    
     console_printk ("Overflow callback took %d\n", timer_get() - time);
 }
 
