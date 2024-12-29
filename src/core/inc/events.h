@@ -16,7 +16,8 @@ typedef enum {
     l2_cache_access,           // L2 cache access event.
     bus_access,                // Bus access event.
     external_mem_request,      // External memory request event.
-    l2_cache_refill            // L2 cache refill event.
+    l2_cache_refill,            // L2 cache refill event.
+    inst_retired              // Instruction retired event.
 } events_enum;
 
 

@@ -39,14 +39,15 @@
 #define L2D_CACHE_REFILL            0x17
 #define BUS_ACCESS                  0x19
 #define EXTERNAL_MEMORY_REQUEST     0xC0
-
+#define INST_RETIRED                0x08
 
 static size_t events_array[] = {
     DATA_MEMORY_ACCESS,
     L2D_CACHE_ACCESS,
     BUS_ACCESS,
     EXTERNAL_MEMORY_REQUEST,
-    L2D_CACHE_REFILL
+    L2D_CACHE_REFILL,
+    INST_RETIRED
 };
 
 
@@ -90,7 +91,7 @@ static inline void pmu_cntr_set(size_t counter, unsigned long value) {
     pmselr = bit_insert(pmselr, counter, 0, 5);
     sysreg_pmselr_el0_write(pmselr);
 
-    value = UINT32_MAX - value;
+    value = value;
     sysreg_pmxevcntr_el0_write(value);
 }
 

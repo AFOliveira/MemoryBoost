@@ -30,7 +30,7 @@ extern const uint16_t LUT[40][40];
 
 extern size_t global_num_ticket_hypervisor;
 
-void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio);
+// void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio);
 
 void mem_throt_init();
 
@@ -41,7 +41,7 @@ void mem_throt_event_overflow_callback(irqid_t);
 void mem_throt_process_overflow(void);
 
 void mem_throt_timer_init(irq_handler_t hander);
-void mem_throt_events_init(events_enum event, unsigned long budget, irq_handler_t handler);
+void mem_throt_events_init(events_enum event);
 void mem_throt_budget_change(uint64_t budget);
 
 #endif /* __mem_throt_H__ */

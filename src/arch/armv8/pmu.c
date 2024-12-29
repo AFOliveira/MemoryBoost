@@ -44,6 +44,7 @@ void pmu_enable(void)
 {
     uint32_t pmcr = sysreg_pmcr_el0_read(); //MRS(PMCR_EL0);
     uint64_t mdcr = sysreg_mdcr_el2_read(); //MRS(MDCR_EL2);
+    pmcr |= (1 << 0);  // E = 1: enable the event counters
 
     cpu()->implemented_event_counters = ((pmcr & PMCR_EL0_N_MASK) >> PMCR_EL0_N_POS);
 
