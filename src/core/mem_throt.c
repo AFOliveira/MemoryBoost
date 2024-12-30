@@ -62,9 +62,7 @@ void mem_throt_period_timer_callback(irqid_t int_id) {
     // Disable the timer interrupt so we don't get re-entered mid-handling.
     timer_disable();
 
-    // Read the current counter value (amount of instructions since last reset).
-    uint32_t instructions = events_arch_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id);
-    console_printk("Instructions Executed: %llu\n", (unsigned long long) instructions);
+    console_printk("%d %d : %llu\n", cpu()->id, cpu()->vcpu->vm->id, events_arch_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id));
 
     // Optionally disable the counter before resetting if needed in your environment.
     events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
