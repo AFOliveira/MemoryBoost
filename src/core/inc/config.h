@@ -88,9 +88,9 @@ struct vm_config {
     colormap_t colors;
 
     struct {
-        uint64_t period_us;
-        uint64_t vm_budget;
-        uint64_t* cpu_num_tickets;
+        size_t period_us;
+        size_t vm_budget;
+        size_t cpu_num_tickets [3];
     } mem_throth;
 
     /**

@@ -24,7 +24,7 @@ typedef struct mem_throt_info {
 
 extern size_t global_num_ticket_hypervisor;
 
-void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio);
+void mem_throt_config(size_t period_us, size_t vm_budget, const size_t* cpu_ratio);
 
 void mem_throt_init();
 
