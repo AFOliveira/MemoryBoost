@@ -30,7 +30,7 @@ void mem_throt_period_timer_callback(irqid_t int_id) {
     timer_disable();
     events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
     timer_reschedule_interrupt(cpu()->vcpu->vm->mem_throt.period_counts);
-    events_cntr_set(cpu()->vcpu->vm->mem_throt.counter_id, cpu()->vcpu->vm->mem_throt.budget);
+    events_cntr_set(cpu()->vcpu->vm->mem_throt.counter_id, cpu()->vcpu->mem_throt.budget);
 
     if (cpu()->vcpu->vm->mem_throt.throttled) {
         events_cntr_irq_enable(cpu()->vcpu->vm->mem_throt.counter_id);
@@ -138,6 +138,12 @@ void mem_throt_init(uint64_t budget, uint64_t period_us) {
     cpu()->vcpu->vm->mem_throt.budget = budget / cpu()->vcpu->vm->cpu_num;
     cpu()->vcpu->vm->mem_throt.period_us = period_us;
 
+    cpu()->vcpu->mem_throt.throttled = false;
+    cpu()->vcpu->mem_throt.budget = budget / cpu()->vcpu->vm->cpu_num;
+    cpu()->vcpu->mem_throt.period_us = period_us;
+
+    
+
     mem_throt_timer_init(mem_throt_period_timer_callback);
-    mem_throt_events_init(bus_access, cpu()->vcpu->vm->mem_throt.budget, mem_throt_event_overflow_callback);
+    mem_throt_events_init(bus_access, cpu()->vcpu->mem_throt.budget, mem_throt_event_overflow_callback);
 }
