@@ -135,7 +135,7 @@ void mem_throt_init(uint64_t budget, uint64_t period_us) {
 
     console_printk("Memory Throttling Init on cpu %d\n", cpu()->id);
     cpu()->vcpu->vm->mem_throt.throttled = false;
-    cpu()->vcpu->vm->mem_throt.budget = budget;
+    cpu()->vcpu->vm->mem_throt.budget = budget / cpu()->vcpu->vm->cpu_num;
     cpu()->vcpu->vm->mem_throt.period_us = period_us;
 
     mem_throt_timer_init(mem_throt_period_timer_callback);
