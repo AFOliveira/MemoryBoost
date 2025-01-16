@@ -8,29 +8,23 @@
 #include <vm.h>
 
 
-enum{THROT_CPU_STANDBY, THROT_CPU_WAKEUP};
-
-
-static void mem_throt_callback(uint32_t event, uint64_t data);
-
-CPU_MSG_HANDLER(mem_throt_callback, THROT_IPI_ID)
-
-static void mem_throt_callback (uint32_t event, uint64_t data) {
-    console_printk("Received IPI with event %lu on core %d\n", event, cpu()->id);
-    switch(event){
-        case THROT_CPU_STANDBY:
-            // console_printk("Suppose to put %d in standby \n", cpu()->id);
-            break;
-        case THROT_CPU_WAKEUP:
-            // console_printk("Suppose to wake up %d \n", cpu()->id);
-            break;
-        default:
-            console_printk("Unknown event %lu\n", event);
-            break;
-        }
-    }
-
-
+/**
+ * @brief Callback function for memory throttling period timer interrupt.
+ *
+ * This function is called when the memory throttling period timer interrupt occurs.
+ * It performs the following actions:
+ * - Disables the timer.
+ * - Disables the event counter associated with memory throttling.
+ * - Reschedules the timer interrupt based on the configured period counts.
+ * - Sets the event counter to the configured budget.
+ * - If the memory throttling is active, enables the event counter interrupt and marks
+ *   the throttling as inactive.
+ * - Enables the event counter.
+ * - Enables the timer.
+ * - Prints a debug message indicating the timer callback execution.
+ *
+ * @param int_id The interrupt ID associated with the timer interrupt.
+ */
 void mem_throt_period_timer_callback(irqid_t int_id) {
 
     timer_disable();
@@ -42,61 +36,46 @@ void mem_throt_period_timer_callback(irqid_t int_id) {
         events_cntr_irq_enable(cpu()->vcpu->vm->mem_throt.counter_id);
         cpu()->vcpu->vm->mem_throt.throttled = false;
     }
-    uint32_t target_cpu_mask = cpu()->vcpu->vm->cpus;  // Assuming this is a bitmask of all CPUs
     
-    // Clear the bit for the current CPU to avoid sending IPI to itself
-    target_cpu_mask &= ~(1ull << cpu()->id);  // Exclude the current CPU from the mask
-    // Send IPI to each CPU in the target mask using SGI for standby
-    // for (int i = 0; i < sizeof(target_cpu_mask) * 8; i++) {
-    //     if (target_cpu_mask & (1ull << i)) {            
-    //         // Create the cpu_msg structure here
-    //         struct cpu_msg msg = {
-    //             .event = THROT_CPU_WAKEUP,
-    //             .handler = THROT_IPI_ID
-    //             };
-    //         console_printk("Sending IPI with event %lu, handler %d to cpu %d\n", msg.event, msg.handler, i);
-    //         cpu_send_msg(i, &msg);
-    //     }
-    //  }
 
     events_cntr_enable(cpu()->vcpu->vm->mem_throt.counter_id);
     timer_enable();
     console_printk("Hypervisor Timer callback %d\n", cpu()->id);
 }
+
+/**
+ * @brief Callback function for handling memory overflow events.
+ *
+ * This function is triggered when a memory overflow event occurs. It performs
+ * the following actions:
+ * - Prints a message indicating a memory overflow on the current CPU.
+ * - Clears the overflow counter for the current virtual machine's memory throttle.
+ * - Disables the event counter for the current virtual machine's memory throttle.
+ * - Disables the interrupt for the event counter of the current virtual machine's memory throttle.
+ * - Sets the throttled flag to true for the current virtual machine's memory throttle.
+ * - Puts the CPU into standby mode.
+ *
+ * @param int_id The interrupt ID associated with the memory overflow event.
+ */
 void mem_throt_event_overflow_callback(irqid_t int_id) {
     console_printk("Memory Overflow on cpu %d\n", cpu()->id);
     events_clear_cntr_ovs(cpu()->vcpu->vm->mem_throt.counter_id);
     events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
     events_cntr_irq_disable(cpu()->vcpu->vm->mem_throt.counter_id);
     cpu()->vcpu->vm->mem_throt.throttled = true;
-    // Corrected console_printk usage with proper format specifier for cpumap_t
-    // console_printk("CPU Map: %lx\n", cpu()->vcpu->vm->cpus);    
-    // Create a mask targeting all CPUs
-    uint64_t target_cpu_mask = cpu()->vcpu->vm->cpus;  // Assuming this is a bitmask of all CPUs
     
-    // Clear the bit for the current CPU to avoid sending IPI to itself
-    target_cpu_mask &= ~(1ull << cpu()->id);  // Exclude the current CPU from the mask
-    //Send IPI to each CPU in the target mask using SGI for standby
-    // for (int i = 0; i < sizeof(target_cpu_mask) * 8; i++) {
-    //     if (target_cpu_mask & (1ull << i)) {
-    //         console_printk("Sending SGI to CPU %d\n", i);
-            
-    //         // Create the cpu_msg structure here
-    //         struct cpu_msg msg = {
-    //             .event = THROT_CPU_STANDBY,
-    //             .handler = THROT_IPI_ID
-    //             };
-    //         console_printk("Sending IPI with event %lu, handler %d\n", msg.event, msg.handler);
-    //         cpu_send_msg(i, &msg);
-    //     }
-    // }
-    
-    // Put the current CPU into standby mode
-    // console_printk("Supposed to put %d in standby \n", cpu()->id);
     cpu_standby();
 }
 
 
+/**
+ * @brief Initializes the memory throttling timer for the current CPU.
+ *
+ * This function sets up the memory throttling timer by printing a message to the console,
+ * defining the IRQ callback handler, and initializing the timer with the specified period.
+ *
+ * @param handler The IRQ handler to be called when the timer expires.
+ */
 void mem_throt_timer_init(irq_handler_t handler) {
     console_printk("Memory Throttling Timer Init on cpu %d\n", cpu()->id);
     timer_define_irq_callback(handler);
@@ -104,6 +83,22 @@ void mem_throt_timer_init(irq_handler_t handler) {
 }
 
 
+/**
+ * @brief Initializes memory throttling events.
+ *
+ * This function sets up the memory throttling events by allocating an event counter,
+ * setting the event type, budget, and interrupt handler, and enabling the necessary
+ * interrupts and counters.
+ *
+ * @param event The event type to be monitored.
+ * @param budget The budget for the event counter.
+ * @param handler The interrupt handler to be called when the event occurs.
+ *
+ * @note This function assumes that the CPU, VCPU, and VM structures are properly initialized
+ *       and accessible through the `cpu()` function.
+ *
+ * @warning If no more event counters are available, an error message is logged.
+ */
 void mem_throt_events_init(events_enum event, unsigned long budget, irq_handler_t handler) {
 
     if ((cpu()->vcpu->vm->mem_throt.counter_id = events_cntr_alloc()) == ERROR_NO_MORE_EVENT_COUNTERS) {
@@ -120,6 +115,22 @@ void mem_throt_events_init(events_enum event, unsigned long budget, irq_handler_
     events_cntr_enable(cpu()->vcpu->vm->mem_throt.counter_id);
 }
 
+/**
+ * @brief Initializes memory throttling for the current CPU.
+ *
+ * This function sets up memory throttling parameters and initializes the
+ * necessary timers and events for the current CPU's virtual machine.
+ *
+ * @param budget The memory budget in bytes.
+ * @param period_us The throttling period in microseconds.
+ *
+ * This function performs the following steps:
+ * 1. Prints a message indicating the initialization of memory throttling on the current CPU.
+ * 2. Sets the `throttled` flag to false for the current CPU's virtual machine.
+ * 3. Assigns the provided `budget` and `period_us` values to the current CPU's virtual machine.
+ * 4. Initializes the memory throttling timer with the specified callback function.
+ * 5. Initializes memory throttling events with the specified parameters and callback function.
+ */
 void mem_throt_init(uint64_t budget, uint64_t period_us) {
 
     console_printk("Memory Throttling Init on cpu %d\n", cpu()->id);
