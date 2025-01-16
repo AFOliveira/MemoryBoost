@@ -131,7 +131,7 @@ void mem_throt_events_init(events_enum event, unsigned long budget, irq_handler_
  * 4. Initializes the memory throttling timer with the specified callback function.
  * 5. Initializes memory throttling events with the specified parameters and callback function.
  */
-void mem_throt_init(uint64_t budget, uint64_t period_us) {
+void mem_throt_init(uint64_t budget, uint64_t period_us, const uint64_t* cpu_num_tickets) {
 
     console_printk("Memory Throttling Init on cpu %d\n", cpu()->id);
     cpu()->vcpu->vm->mem_throt.throttled = false;
@@ -139,7 +139,9 @@ void mem_throt_init(uint64_t budget, uint64_t period_us) {
     cpu()->vcpu->vm->mem_throt.period_us = period_us;
 
     cpu()->vcpu->mem_throt.throttled = false;
-    cpu()->vcpu->mem_throt.budget = budget / cpu()->vcpu->vm->cpu_num;
+    cpu()->vcpu->mem_throt.budget = budget * cpu_num_tickets[cpu()->vcpu->id] / 100;
+    // cpu()->vcpu->mem_throt.budget = budget / cpu()->vcpu->vm->cpu_num;
+
     cpu()->vcpu->mem_throt.period_us = period_us;
 
     

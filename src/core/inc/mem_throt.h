@@ -19,7 +19,7 @@ typedef struct mem_throt_info {
 }mem_throt_t;
 
 
-void mem_throt_init(uint64_t budget, uint64_t period_us);
+void mem_throt_init(uint64_t budget, uint64_t period_us, const uint64_t* cpu_num_tickets);
 void mem_throt_period_timer_callback(irqid_t);
 
 /* budget is used up. PMU generate an interrupt */
