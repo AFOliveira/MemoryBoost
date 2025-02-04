@@ -10,26 +10,58 @@
 
 spinlock_t lock;
 
-void mem_throt_period_timer_callback(irqid_t int_id) {
-    timer_disable();
-    events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
-    timer_reschedule_interrupt(cpu()->vcpu->vm->mem_throt.period_counts);
-    events_cntr_set(cpu()->vcpu->vm->mem_throt.counter_id, cpu()->vcpu->mem_throt.budget);
+const size_t DT[3] = {1000, 30000, 300000};
 
-    if (cpu()->vcpu->mem_throt.throttled)  
-    {
-        events_cntr_irq_enable(cpu()->vcpu->vm->mem_throt.counter_id);
-        cpu()->vcpu->mem_throt.throttled = false;
+
+volatile size_t c_bus_access = 0;
+
+// void mem_throt_period_timer_callback_c(irqid_t int_id) {
+//     timer_disable();
+//     c_bus_access += events_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id);
+//     timer_reschedule_interrupt(cpu()->vcpu->vm->mem_throt.period_counts);
+//     timer_enable();
+// }
+
+void mem_throt_period_timer_callback_nc(irqid_t int_id) {
+    timer_disable();
+    // uint32_t _bus_access;
+    if(cpu()->vcpu->vm->mem_throt.c_vm){
+        // uint64_t new_val = events_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id);
+        // atomic_store64_release(&c_bus_access, new_val);
+        // _bus_access = events_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id);
+        // console_printk ("%lu\n", _bus_access & 0x7FFFFFFF);
+        pmu_reset_event_counters();
+
+        events_clear_cntr_ovs(cpu()->vcpu->vm->mem_throt.counter_id);
+        events_arch_cntr_enable(cpu()->vcpu->vm->mem_throt.counter_id);
+        events_cntr_set(cpu()->vcpu->vm->mem_throt.counter_id, 0);
     }
-    events_cntr_enable(cpu()->vcpu->vm->mem_throt.counter_id);
-    
-    if (cpu()->vcpu->vm->master) 
-        cpu()->vcpu->vm->mem_throt.budget_left = cpu()->vcpu->vm->mem_throt.budget;
-    
+    else
+    {
+        events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
+
+        if (cpu()->vcpu->mem_throt.throttled)  
+        {
+            events_cntr_irq_enable(cpu()->vcpu->vm->mem_throt.counter_id);
+            cpu()->vcpu->mem_throt.throttled = false;
+        }
+        events_cntr_enable(cpu()->vcpu->vm->mem_throt.counter_id);
+        
+        if (cpu()->vcpu->vm->master) 
+            cpu()->vcpu->vm->mem_throt.budget_left = cpu()->vcpu->vm->mem_throt.budget;
+
+        // c_bus_access = 0;
+        // uint64_t val = atomic_load64_acquire(&c_bus_access);
+        // console_printk("CPU %d sees value: %lu\n", cpu()->id , atomic_load64_acquire(&c_bus_access));
+        events_cntr_set(cpu()->vcpu->vm->mem_throt.counter_id, cpu()->vcpu->mem_throt.budget);
+    }
+    timer_reschedule_interrupt(cpu()->vcpu->vm->mem_throt.period_counts);
     timer_enable();
 
 }
 void mem_throt_event_overflow_callback(irqid_t int_id) {
+
+    console_printk ("VM %d OverFlow pmu_cntr_get: %lu\n", cpu()->vcpu->vm->id, events_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id));
 
     events_clear_cntr_ovs(cpu()->vcpu->vm->mem_throt.counter_id);
     events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
@@ -73,8 +105,16 @@ inline void mem_throt_budget_change(size_t budget) {
     events_cntr_irq_enable(cpu()->vcpu->vm->mem_throt.counter_id);
 }
 
+void perf_monitor_setup_event_counters(size_t counter_id) {
+        events_cntr_set(counter_id, 0);
+        events_enable();
+        events_set_evtyper(counter_id, bus_access);
+        events_clear_cntr_ovs(counter_id);
+        events_cntr_enable(counter_id);
+}
+
 void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio) {
-    if(vm_budget == 0) return;
+    // if(vm_budget == 0) return;
 
     if (cpu()->id == cpu()->vcpu->vm->master) 
     {   
@@ -99,7 +139,7 @@ void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio) {
     cpu()->vcpu->vm->mem_throt.budget -= cpu()->vcpu->mem_throt.budget;
     cpu()->vcpu->vm->mem_throt.budget_left -= cpu()->vcpu->mem_throt.budget;
     cpu()->vcpu->vm->mem_throt.assign_ratio += cpu()->vcpu->mem_throt.assign_ratio;
-    cpu()->vcpu->vm->mem_throt.counter_id = 1;
+    // cpu()->vcpu->vm->mem_throt.counter_id = 1;
 
     spin_unlock(&lock);
 
@@ -113,8 +153,15 @@ void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio) {
 
 void mem_throt_init() {
 
-    if (cpu()->vcpu->mem_throt.budget == 0) return;
-    mem_throt_events_init(bus_access, cpu()->vcpu->mem_throt.budget, mem_throt_event_overflow_callback);
-    mem_throt_timer_init(mem_throt_period_timer_callback);
+    if (cpu()->vcpu->vm->mem_throt.budget != 0){
+        mem_throt_events_init(bus_access, cpu()->vcpu->mem_throt.budget, mem_throt_event_overflow_callback);
+    }
+    else{
+        cpu()->vcpu->vm->mem_throt.c_vm = 1;
+        perf_monitor_setup_event_counters(cpu()->vcpu->vm->mem_throt.counter_id);
+        // mem_throt_timer_init(mem_throt_period_timer_callback_c);
+    }
+    mem_throt_timer_init(mem_throt_period_timer_callback_nc);
+
 }
 

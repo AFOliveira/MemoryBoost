@@ -40,6 +40,11 @@ static inline void events_arch_cntr_set(size_t counter, unsigned long value)
     pmu_cntr_set(counter, value);
 }
 
+static inline void events_arch_reset_event_counters(void)
+{
+    pmu_reset_event_counters();
+}
+
 static inline uint64_t events_arch_get_cntr_value(size_t counter)
 {
     return pmu_cntr_get(counter);

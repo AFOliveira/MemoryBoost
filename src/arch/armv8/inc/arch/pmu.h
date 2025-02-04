@@ -94,6 +94,11 @@ static inline void pmu_cntr_set(size_t counter, unsigned long value) {
     sysreg_pmxevcntr_el0_write(value);
 }
 
+static inline void pmu_reset_event_counters(void) {
+    // Set P bit (bit 1) in PMCR_EL0
+    sysreg_pmcr_el0_write(0x7);
+}
+
 static inline unsigned long pmu_cntr_get(size_t counter) {
     uint64_t pmselr;
 
