@@ -10,7 +10,8 @@
 
 spinlock_t lock;
 
-const size_t DT[3] = {1000, 30000, 300000};
+
+const size_t DT[3] = {10000, 100, 5};
 
 
 volatile size_t c_bus_access = 0;
@@ -22,43 +23,49 @@ volatile size_t c_bus_access = 0;
 //     timer_enable();
 // }
 
+// Selects the appropriate DT value based on 'val'.
+// Returns DT[2] if val < 1000,
+//         DT[1] if 1000 <= val < 5000,
+//         DT[0] if val >= 5000.
+static inline size_t select_dt_value(uint64_t val) {
+    // The comparisons yield 0 or 1 and by adding them we get the correct index.
+    size_t index = (val >= 1000) + (val >= 5000);
+    return DT[index];
+}
+
 void mem_throt_period_timer_callback_nc(irqid_t int_id) {
     timer_disable();
-    // uint32_t _bus_access;
-    if(cpu()->vcpu->vm->mem_throt.c_vm){
-        // uint64_t new_val = events_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id);
-        // atomic_store64_release(&c_bus_access, new_val);
-        // _bus_access = events_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id);
-        // console_printk ("%lu\n", _bus_access & 0x7FFFFFFF);
+    if (cpu()->vcpu->vm->mem_throt.c_vm) {
+        uint64_t new_val = events_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id);
+        atomic_store64_release(&c_bus_access, new_val);
+
         pmu_reset_event_counters();
 
         events_clear_cntr_ovs(cpu()->vcpu->vm->mem_throt.counter_id);
         events_arch_cntr_enable(cpu()->vcpu->vm->mem_throt.counter_id);
         events_cntr_set(cpu()->vcpu->vm->mem_throt.counter_id, 0);
-    }
-    else
-    {
+    } else {
         events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
 
-        if (cpu()->vcpu->mem_throt.throttled)  
-        {
+        if (cpu()->vcpu->mem_throt.throttled) {
             events_cntr_irq_enable(cpu()->vcpu->vm->mem_throt.counter_id);
             cpu()->vcpu->mem_throt.throttled = false;
         }
         events_cntr_enable(cpu()->vcpu->vm->mem_throt.counter_id);
         
-        if (cpu()->vcpu->vm->master) 
+        if (cpu()->vcpu->vm->master)
             cpu()->vcpu->vm->mem_throt.budget_left = cpu()->vcpu->vm->mem_throt.budget;
 
-        // c_bus_access = 0;
-        // uint64_t val = atomic_load64_acquire(&c_bus_access);
-        // console_printk("CPU %d sees value: %lu\n", cpu()->id , atomic_load64_acquire(&c_bus_access));
-        events_cntr_set(cpu()->vcpu->vm->mem_throt.counter_id, cpu()->vcpu->mem_throt.budget);
+        // Load the shared value and choose the DT value accordingly.
+        uint64_t val = atomic_load64_acquire(&c_bus_access);
+        size_t new_budget = select_dt_value(val);
+
+        events_cntr_set(cpu()->vcpu->vm->mem_throt.counter_id, new_budget);
     }
     timer_reschedule_interrupt(cpu()->vcpu->vm->mem_throt.period_counts);
     timer_enable();
-
 }
+
 void mem_throt_event_overflow_callback(irqid_t int_id) {
 
     console_printk ("VM %d OverFlow pmu_cntr_get: %lu\n", cpu()->vcpu->vm->id, events_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id));
@@ -114,7 +121,7 @@ void perf_monitor_setup_event_counters(size_t counter_id) {
 }
 
 void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio) {
-    // if(vm_budget == 0) return;
+     if(period_us == 0) return;
 
     if (cpu()->id == cpu()->vcpu->vm->master) 
     {   
@@ -152,7 +159,7 @@ void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio) {
 }
 
 void mem_throt_init() {
-
+    if(cpu()->vcpu->vm->mem_throt.is_initialized != true) return;
     if (cpu()->vcpu->vm->mem_throt.budget != 0){
         mem_throt_events_init(bus_access, cpu()->vcpu->mem_throt.budget, mem_throt_event_overflow_callback);
     }
