@@ -29,7 +29,7 @@ extern volatile size_t c_bus_access;
 
 extern size_t global_num_ticket_hypervisor;
 
-void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio);
+void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio, size_t asil_criticality);
 
 void mem_throt_init();
 

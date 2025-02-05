@@ -11,7 +11,7 @@
 spinlock_t lock;
 
 
-const size_t DT[3] = {10000, 100, 5};
+const size_t DT[3] = {100000, 10000, 1000};
 
 
 volatile size_t c_bus_access = 0;
@@ -24,9 +24,6 @@ volatile size_t c_bus_access = 0;
 // }
 
 // Selects the appropriate DT value based on 'val'.
-// Returns DT[2] if val < 1000,
-//         DT[1] if 1000 <= val < 5000,
-//         DT[0] if val >= 5000.
 static inline size_t select_dt_value(uint64_t val) {
     // The comparisons yield 0 or 1 and by adding them we get the correct index.
     size_t index = (val >= 1000) + (val >= 5000);
@@ -68,15 +65,13 @@ void mem_throt_period_timer_callback_nc(irqid_t int_id) {
 
 void mem_throt_event_overflow_callback(irqid_t int_id) {
 
-    console_printk ("VM %d OverFlow pmu_cntr_get: %lu\n", cpu()->vcpu->vm->id, events_get_cntr_value(cpu()->vcpu->vm->mem_throt.counter_id));
-
     events_clear_cntr_ovs(cpu()->vcpu->vm->mem_throt.counter_id);
     events_cntr_disable(cpu()->vcpu->vm->mem_throt.counter_id);
     events_cntr_irq_disable(cpu()->vcpu->vm->mem_throt.counter_id);
 
-    spin_lock(&lock);
-    cpu()->vcpu->vm->mem_throt.budget_left -= (cpu()->vcpu->vm->mem_throt.budget / cpu()->vcpu->vm->cpu_num);
-    spin_unlock(&lock);
+    // spin_lock(&lock);
+    // cpu()->vcpu->vm->mem_throt.budget_left -= (cpu()->vcpu->vm->mem_throt.budget / cpu()->vcpu->vm->cpu_num);
+    // spin_unlock(&lock);
     
     cpu()->vcpu->mem_throt.throttled = true;  
     cpu_standby();
@@ -120,8 +115,10 @@ void perf_monitor_setup_event_counters(size_t counter_id) {
         events_cntr_enable(counter_id);
 }
 
-void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio) {
-     if(period_us == 0) return;
+void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio, size_t asil_criticality) {
+    
+    cpu()->vcpu->vm->mem_throt.c_vm = 0;
+    if(period_us == 0) return;
 
     if (cpu()->id == cpu()->vcpu->vm->master) 
     {   
@@ -132,17 +129,18 @@ void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio) {
         cpu()->vcpu->vm->mem_throt.budget_left = cpu()->vcpu->vm->mem_throt.budget;
         cpu()->vcpu->vm->mem_throt.is_initialized = true;
     }
+    cpu()->vcpu->vm->mem_throt.c_vm = asil_criticality;
 
     while(cpu()->vcpu->vm->mem_throt.is_initialized != true);
 
     spin_lock(&lock);
 
     if (cpu_ratio[cpu()->vcpu->id] == 0) {
-        cpu_ratio[cpu()->vcpu->id] = vm_budget / cpu()->vcpu->vm->cpu_num;
+        cpu_ratio[cpu()->vcpu->id] = cpu()->vcpu->vm->mem_throt.budget / cpu()->vcpu->vm->cpu_num;
     }
     
     cpu()->vcpu->mem_throt.assign_ratio = cpu_ratio[cpu()->vcpu->id]; 
-    cpu()->vcpu->mem_throt.budget = vm_budget * (cpu()->vcpu->mem_throt.assign_ratio) / 100;
+    cpu()->vcpu->mem_throt.budget = cpu()->vcpu->vm->mem_throt.budget * (cpu()->vcpu->mem_throt.assign_ratio) / 100;
     cpu()->vcpu->vm->mem_throt.budget -= cpu()->vcpu->mem_throt.budget;
     cpu()->vcpu->vm->mem_throt.budget_left -= cpu()->vcpu->mem_throt.budget;
     cpu()->vcpu->vm->mem_throt.assign_ratio += cpu()->vcpu->mem_throt.assign_ratio;
@@ -160,11 +158,12 @@ void mem_throt_config(size_t period_us, size_t vm_budget, size_t* cpu_ratio) {
 
 void mem_throt_init() {
     if(cpu()->vcpu->vm->mem_throt.is_initialized != true) return;
+
     if (cpu()->vcpu->vm->mem_throt.budget != 0){
         mem_throt_events_init(bus_access, cpu()->vcpu->mem_throt.budget, mem_throt_event_overflow_callback);
     }
     else{
-        cpu()->vcpu->vm->mem_throt.c_vm = 1;
+        // cpu()->vcpu->vm->mem_throt.c_vm = 1;
         perf_monitor_setup_event_counters(cpu()->vcpu->vm->mem_throt.counter_id);
         // mem_throt_timer_init(mem_throt_period_timer_callback_c);
     }
