@@ -67,7 +67,6 @@ where:
    .mem_throth = {
        .period_us = x,  // Period in microseconds (e.g., 1000 for 1ms)
        .budget = y,     // Maximum memory accesses per period per VM
-       .cpu_num_buget = {x, y, z} //Percentage of VM budget each CPU takes
    },
    ```
 
@@ -91,9 +90,28 @@ where:
    - Adjust settings based on your specific mixed-criticality requirements
 
 3. **Deployment**
-   - Deploy as normally would for bao depending on your platform.
-   - For more information check https://github.com/bao-project/bao-demos/
+   - Copy hypervisor binary (`build/bao.elf`) to boot medium
+   - Boot the system
+   - Monitor initialization through console output
 
+## Performance Tuning
+
+### Best Practices
+
+1. **Period Selection**
+   - Longer periods (>2 µs) minimize overhead
+   - Shorter periods provide finer-grained control
+   - Consider workload characteristics when choosing periods
+
+2. **Budget Allocation**
+   - Start conservative with non-critical VM budgets
+   - Monitor critical VM performance
+   - Gradually adjust based on system requirements
+
+3. **Monitoring**
+   - Use console output to verify initialization
+   - Monitor PMU events for bandwidth usage
+   - Check for budget overflow interrupts
 
 ## Publications
 
