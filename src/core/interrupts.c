@@ -106,7 +106,7 @@ bool interrupts_reserve(irqid_t int_id, irq_handler_t handler)
     bool ret = false;
 
     spin_lock(&irq_reserve_lock);
-    if ((int_id < MAX_INTERRUPTS) && !interrupt_assigned(int_id)) {
+    if ((int_id < MAX_INTERRUPTS) ) { //&& !interrupt_assigned(int_id)
         ret = true;
         interrupt_handlers[int_id] = handler;
         bitmap_set(hyp_interrupt_bitmap, int_id);

@@ -128,4 +128,3 @@ We welcome contributions! Please submit pull requests or open issues for:
 - Feature enhancements
 - Documentation updates
 - Platform support extensions
-- Test case additions

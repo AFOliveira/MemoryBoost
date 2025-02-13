@@ -48,6 +48,10 @@ static inline void events_cntr_set(size_t counter, unsigned long value) {
     events_arch_cntr_set(counter, value);
 }
 
+static inline void events_reset_event_counters(void) {
+    events_arch_reset_event_counters();
+}
+
 static inline uint64_t events_get_cntr_value(size_t counter) {
     return events_arch_get_cntr_value(counter);
 }
